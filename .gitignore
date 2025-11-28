@@ -1,0 +1,14 @@
+# Ignore Data
+data/raw/*
+data/processed/*
+
+# Ignore Models (Too large for Git)
+models/*.pkl
+models/*.pth
+
+# Ignore Environment
+venv/
+.env
+.DS_Store
+__pycache__/
+.ipynb_checkpoints/

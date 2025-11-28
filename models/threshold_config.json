@@ -1,0 +1,6 @@
+{
+    "optimal_threshold": 0.59,
+    "savings_per_batch": 21852000.0,
+    "baseline_loss": 35340000.0,
+    "aurafin_loss": 13488000.0
+}
