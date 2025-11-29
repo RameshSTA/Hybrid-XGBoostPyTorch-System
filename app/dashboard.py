@@ -92,6 +92,7 @@ def make_prediction(input_data):
 # 3. YOUR PREFERRED CSS (Professional, Clean, & Robust)
 # ---------------------------------------------------------
 st.markdown("""
+     <style>
    /* Global Settings */
    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
   
@@ -215,6 +216,7 @@ st.markdown("""
        padding: 10px;
        height: 200px; /* Fixed height for alignment */
    }
+   </style>
 
     """, unsafe_allow_html=True)
 
