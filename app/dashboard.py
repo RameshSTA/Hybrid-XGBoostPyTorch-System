@@ -275,14 +275,12 @@ tab_live, tab_impact, tab_research = st.tabs([
 # =========================================================
 with tab_live:
     if run_btn:
-        # Build Input Data
         input_data = {
             "loan_amount": loan_amt, "income": income, "property_value": prop_val,
             "Credit_Score": credit_score, "LTV": ltv, "Region": region,
             "loan_purpose": loan_purpose, **payload_extras
         }
         
-        # EXECUTE LOGIC (No Requests)
         result = make_prediction(input_data)
         
         if result:
@@ -290,24 +288,31 @@ with tab_live:
             prob = result['risk_score']
             exposure = result['exposure']
             threshold = result['threshold']
+            policy_fail = result['policy_fail']
+            reason = result['reason']
             
-            # --- 1. TOP ROW: VERDICT CARD & GAUGE CHART ---
+            # --- 1. VERDICT CARD ---
             col_left, col_right = st.columns([1, 2])
-            
             with col_left:
-                style_class = "verdict-approve" if decision == "APPROVE" else "verdict-reject"
+                style = "verdict-approve" if decision == "APPROVE" else "verdict-reject"
                 icon = "✅" if decision == "APPROVE" else "🚫"
                 
+                # Check if it was a Policy Failure (Hard Rule)
+                if policy_fail:
+                    subtitle = "Policy Violation"
+                else:
+                    subtitle = f"Confidence: {100-(prob*100):.1f}%"
+
                 st.markdown(f"""
-                <div class="verdict-box {style_class}">
+                <div class="verdict-box {style}">
                     <div class="verdict-title">AI RECOMMENDATION</div>
                     <h1 class="verdict-value">{decision}</h1>
-                    <div style="margin-top: 10px; font-weight: 500;">{icon} Confidence: {100-(prob*100):.1f}%</div>
+                    <div style="margin-top: 10px; font-weight: 500;">{icon} {subtitle}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
             with col_right:
-                # Gauge Chart
+                # --- 2. GAUGE CHART ---
                 fig = go.Figure(go.Indicator(
                     mode = "gauge+number+delta",
                     value = prob * 100,
@@ -316,71 +321,41 @@ with tab_live:
                     delta = {'reference': 59, 'increasing': {'color': "#EF4444"}, 'decreasing': {'color': "#10B981"}},
                     gauge = {
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#64748B"},
-                        'bar': {'color': "#1E293B"}, # Dark Pointer
+                        'bar': {'color': "#1E293B"},
                         'bgcolor': "white",
                         'borderwidth': 2,
                         'bordercolor': "#E2E8F0",
                         'steps': [
-                            {'range': [0, 59], 'color': "#D1FAE5"},  # Safe Green
-                            {'range': [59, 100], 'color': "#FEE2E2"}], # Danger Red
-                        'threshold': {
-                            'line': {'color': "#EF4444", 'width': 4},
-                            'thickness': 0.75,
-                            'value': 59}}))
-                
+                            {'range': [0, 59], 'color': "#D1FAE5"},
+                            {'range': [59, 100], 'color': "#FEE2E2"}],
+                        'threshold': {'line': {'color': "#EF4444", 'width': 4}, 'thickness': 0.75, 'value': 59}}))
                 fig.update_layout(height=200, margin=dict(l=20,r=20,t=30,b=20), paper_bgcolor="rgba(0,0,0,0)", font={'family': "Inter"})
                 st.plotly_chart(fig, use_container_width=True)
 
-            # --- 3. METRICS ROW ---
+            # --- 3. METRICS ---
+            st.markdown("<br>", unsafe_allow_html=True)
             m1, m2, m3 = st.columns(3)
             with m1:
-                st.markdown(f"""
-                <div class="metric-box">
-                    <div class="metric-title">CALCULATED RISK</div>
-                    <div class="metric-value">{prob:.1%}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                st.markdown(f"""<div class="metric-box"><div class="metric-title">RISK SCORE</div><div class="metric-value">{prob:.1%}</div></div>""", unsafe_allow_html=True)
             with m2:
-                st.markdown(f"""
-                <div class="metric-box">
-                    <div class="metric-title">FINANCIAL EXPOSURE</div>
-                    <div class="metric-value">${exposure:,.0f}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                st.markdown(f"""<div class="metric-box"><div class="metric-title">EXPOSURE</div><div class="metric-value">${exposure:,.0f}</div></div>""", unsafe_allow_html=True)
             with m3:
-                st.markdown(f"""
-                <div class="metric-box">
-                    <div class="metric-title">SAFETY THRESHOLD</div>
-                    <div class="metric-value">{threshold:.2f}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-box"><div class="metric-title">THRESHOLD</div><div class="metric-value">{threshold:.2f}</div></div>""", unsafe_allow_html=True)
 
             # --- 4. EXPLAINABILITY ---
             st.markdown("---")
-            st.subheader(" Logic Explanation")
-            
-            exp_c1, exp_c2 = st.columns([1, 1])
-            with exp_c1:
-                st.info(f"""
-                **The Verdict:**
-                The applicant's risk score is **{prob:.1%}**.
-                
-                This is **{'LOWER' if decision=='APPROVE' else 'HIGHER'}** than the optimized threshold of **{threshold}**, triggering the **{decision}** outcome.
-                """)
-            with exp_c2:
-                st.write("**Primary Risk Drivers:**")
-                st.markdown(f"""
-                - **LTV Ratio:** `{ltv:.1f}%` 
-                  *Status:* {'🔴 High Leverage' if ltv > 80 else '🟢 Safe Equity'}
-                
-                - **Credit History:** `{credit_score}` 
-                  *Status:* {'🔴 Subprime' if credit_score < 650 else '🟢 Prime'}
-                
-                - **LTI Ratio:** `{loan_amt/income:.1f}x` 
-                  *Status:* Debt-to-Income load
-                """)
+            with st.expander("🔍 **View Logic Explanation**", expanded=True):
+                if policy_fail:
+                    st.error(f"**Application Rejected by Policy Guardrails:**")
+                    st.markdown(f"Reason: **{reason}**")
+                else:
+                    st.markdown(f"""
+                    **Decision Logic:** The model calculated a probability of **{prob:.1%}**. This is **{'LOWER' if decision=='APPROVE' else 'HIGHER'}** than the optimized threshold of **{threshold}**.
+                    
+                    **Primary Risk Drivers:**
+                    - **LTV Ratio:** `{ltv:.1f}%` ({'🔴 High Leverage' if ltv > 80 else '🟢 Safe Equity'})
+                    - **Credit History:** `{credit_score}` ({'🔴 Subprime' if credit_score < 650 else '🟢 Prime'})
+                    """)
     else:
         st.info("👈 Enter applicant details in the sidebar to generate a live risk assessment.")
 
