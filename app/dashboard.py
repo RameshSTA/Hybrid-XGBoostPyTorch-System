@@ -1,5 +1,5 @@
 # ---------------------------------------------------------
-# app/dashboard.py - Final UI (Fixed Logic)
+# app/dashboard.py - Final Production Edition (UI + Logic + Guardrails)
 # ---------------------------------------------------------
 import streamlit as st
 import pandas as pd
@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. INTERNAL LOGIC (The "Brain") - Hidden from UI
+# 2. INTERNAL MODEL LOADER
 # ---------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
@@ -28,7 +28,7 @@ def load_artifacts():
     config_path = os.path.join(base_path, "models", "threshold_config.json")
 
     if not os.path.exists(model_path):
-        st.error("Model not found. Please check repository structure.")
+        st.error(f"Model not found at {model_path}")
         return None, None, 0.50
 
     try:
@@ -39,15 +39,58 @@ def load_artifacts():
             threshold = config.get("optimal_threshold", 0.50)
         return model, encoders, threshold
     except Exception as e:
-        st.error(f"Error loading AI engine: {e}")
+        st.error(f"Failed to load AI Engine: {e}")
         return None, None, 0.50
 
 model, encoders, OPTIMAL_THRESHOLD = load_artifacts()
 
+# ---------------------------------------------------------
+# 3. POLICY ENGINE (The Guardrails)
+# ---------------------------------------------------------
+def check_policy_rules(data):
+    """
+    Applies hard banking rules before the AI Model.
+    """
+    # RULE 1: Minimum Income Check
+    if data['income'] <= 0:
+        return True, "Income cannot be zero or negative."
+    
+    # RULE 2: Minimum Credit Score (Subprime Floor)
+    if data['Credit_Score'] < 500:
+        return True, f"Credit Score {data['Credit_Score']} is below minimum eligibility (500)."
+    
+    # RULE 3: Minimum Property Value
+    if data['property_value'] < 50000:
+        return True, "Property value is below collateral minimum ($50k)."
+        
+    # RULE 4: Extreme LTV Check
+    ltv = (data['loan_amount'] / data['property_value']) * 100 if data['property_value'] > 0 else 999
+    if ltv > 105:
+        return True, f"LTV {ltv:.1f}% exceeds regulatory limit (105%)."
+
+    return False, "Passed"
+
+# ---------------------------------------------------------
+# 4. PREDICTION LOGIC
+# ---------------------------------------------------------
 def make_prediction(input_data):
+    # --- STEP 1: CHECK POLICY RULES ---
+    is_knockout, reason = check_policy_rules(input_data)
+    
+    if is_knockout:
+        return {
+            "decision": "REJECT",
+            "risk_score": 1.00, # Max Risk
+            "exposure": 0,
+            "threshold": OPTIMAL_THRESHOLD,
+            "policy_fail": True,
+            "reason": reason
+        }
+
+    # --- STEP 2: RUN AI MODEL ---
     if model is None: return None
     df = pd.DataFrame([input_data])
-    
+
     # Feature Engineering
     income_val = df['income'].replace(0, 1.0)
     df['LTI'] = df['loan_amount'] / income_val
@@ -85,14 +128,16 @@ def make_prediction(input_data):
         "decision": decision,
         "risk_score": risk_probability,
         "exposure": exposure,
-        "threshold": OPTIMAL_THRESHOLD
+        "threshold": OPTIMAL_THRESHOLD,
+        "policy_fail": False,
+        "reason": "AI Assessment"
     }
 
 # ---------------------------------------------------------
-# 3. YOUR PREFERRED CSS (Professional, Clean, & Robust)
+# 5. CSS STYLING
 # ---------------------------------------------------------
 st.markdown("""
-     <style>
+       <style>
    /* Global Settings */
    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
   
@@ -221,15 +266,15 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 4. SIDEBAR
+# 6. SIDEBAR
 # ---------------------------------------------------------
 with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/bank-building.png", width=50)
     st.markdown("### AuraFin Control")
-    st.caption("Production v1.0 | XGBoost")
+    st.caption("Production v10.0 | Guardrails Active")
     st.markdown("---")
     
-    st.markdown("** Financial Profile**")
+    st.markdown("**💰 Financial Profile**")
     income = st.number_input("Monthly Income ($)", value=9500, step=500)
     loan_amt = st.number_input("Loan Amount ($)", value=320000, step=1000)
     prop_val = st.number_input("Property Value ($)", value=450000, step=1000)
@@ -237,10 +282,10 @@ with st.sidebar:
     ltv = (loan_amt / prop_val) * 100 if prop_val > 0 else 0
     st.markdown(f"**LTV Ratio:** `{ltv:.1f}%`")
     if ltv > 80:
-        st.warning("High Leverage Risk")
+        st.warning("⚠️ High Risk Leverage")
     
     st.markdown("---")
-    st.markdown("** Applicant Details**")
+    st.markdown("**👤 Applicant Details**")
     credit_score = st.slider("FICO Score", 300, 850, 720)
     region = st.selectbox("Region", ["North", "South", "Central", "North-East"])
     loan_purpose = st.selectbox("Purpose", ["p1", "p2", "p3", "p4"])
@@ -251,11 +296,11 @@ with st.sidebar:
     run_btn = st.button("RUN RISK ASSESSMENT", type="primary", use_container_width=True)
 
 # ---------------------------------------------------------
-# 5. MAIN HEADER
+# 7. MAIN HEADER
 # ---------------------------------------------------------
 c1, c2 = st.columns([3, 1])
 with c1:
-    st.title("AuraFin: Hybrid XGBoost/PyTorch System")
+    st.title("Credit Risk Intelligence System")
     st.markdown("Cost-Sensitive Decision Engine • Optimized for Net Profitability")
 with c2:
     st.markdown("")
@@ -265,9 +310,9 @@ with c2:
 st.markdown("---")
 
 tab_live, tab_impact, tab_research = st.tabs([
-    " LIVE DECISION", 
-    " BUSINESS IMPACT", 
-    " METHODOLOGY"
+    "LIVE DECISION", 
+    "FINANCIAL IMPACT", 
+    "RESEARCH & METHODOLOGY"
 ])
 
 # =========================================================
@@ -293,11 +338,12 @@ with tab_live:
             
             # --- 1. VERDICT CARD ---
             col_left, col_right = st.columns([1, 2])
+            
             with col_left:
                 style = "verdict-approve" if decision == "APPROVE" else "verdict-reject"
                 icon = "✅" if decision == "APPROVE" else "🚫"
                 
-                # Check if it was a Policy Failure (Hard Rule)
+                # Dynamic Subtitle based on Policy vs Model
                 if policy_fail:
                     subtitle = "Policy Violation"
                 else:
@@ -321,40 +367,63 @@ with tab_live:
                     delta = {'reference': 59, 'increasing': {'color': "#EF4444"}, 'decreasing': {'color': "#10B981"}},
                     gauge = {
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#64748B"},
-                        'bar': {'color': "#1E293B"},
+                        'bar': {'color': "#1E293B"}, # Dark Pointer
                         'bgcolor': "white",
                         'borderwidth': 2,
                         'bordercolor': "#E2E8F0",
                         'steps': [
-                            {'range': [0, 59], 'color': "#D1FAE5"},
-                            {'range': [59, 100], 'color': "#FEE2E2"}],
-                        'threshold': {'line': {'color': "#EF4444", 'width': 4}, 'thickness': 0.75, 'value': 59}}))
+                            {'range': [0, 59], 'color': "#D1FAE5"},  # Safe Green
+                            {'range': [59, 100], 'color': "#FEE2E2"}], # Danger Red
+                        'threshold': {
+                            'line': {'color': "#EF4444", 'width': 4},
+                            'thickness': 0.75,
+                            'value': 59}}))
+                
                 fig.update_layout(height=200, margin=dict(l=20,r=20,t=30,b=20), paper_bgcolor="rgba(0,0,0,0)", font={'family': "Inter"})
                 st.plotly_chart(fig, use_container_width=True)
 
-            # --- 3. METRICS ---
-            st.markdown("<br>", unsafe_allow_html=True)
+            # --- 3. METRICS ROW ---
             m1, m2, m3 = st.columns(3)
             with m1:
-                st.markdown(f"""<div class="metric-box"><div class="metric-title">RISK SCORE</div><div class="metric-value">{prob:.1%}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="metric-box">
+                    <div class="metric-title">CALCULATED RISK</div>
+                    <div class="metric-value">{prob:.1%}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
             with m2:
-                st.markdown(f"""<div class="metric-box"><div class="metric-title">EXPOSURE</div><div class="metric-value">${exposure:,.0f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="metric-box">
+                    <div class="metric-title">FINANCIAL EXPOSURE</div>
+                    <div class="metric-value">${exposure:,.0f}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
             with m3:
-                st.markdown(f"""<div class="metric-box"><div class="metric-title">THRESHOLD</div><div class="metric-value">{threshold:.2f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="metric-box">
+                    <div class="metric-title">SAFETY THRESHOLD</div>
+                    <div class="metric-value">{threshold:.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             # --- 4. EXPLAINABILITY ---
             st.markdown("---")
             with st.expander("🔍 **View Logic Explanation**", expanded=True):
                 if policy_fail:
-                    st.error(f"**Application Rejected by Policy Guardrails:**")
-                    st.markdown(f"Reason: **{reason}**")
+                    st.error(f"**Application Rejected by Policy Engine:**")
+                    st.write(f"Reason: {reason}")
                 else:
                     st.markdown(f"""
-                    **Decision Logic:** The model calculated a probability of **{prob:.1%}**. This is **{'LOWER' if decision=='APPROVE' else 'HIGHER'}** than the optimized threshold of **{threshold}**.
+                    **Decision Logic:**
+                    The model calculated a probability of **{prob:.1%}**. 
+                    This is **{'LOWER' if decision=='APPROVE' else 'HIGHER'}** than the optimized threshold of **{threshold}**, triggering the **{decision}** outcome.
                     
                     **Primary Risk Drivers:**
                     - **LTV Ratio:** `{ltv:.1f}%` ({'🔴 High Leverage' if ltv > 80 else '🟢 Safe Equity'})
                     - **Credit History:** `{credit_score}` ({'🔴 Subprime' if credit_score < 650 else '🟢 Prime'})
+                    - **LTI Ratio:** `{loan_amt/income:.1f}x` Debt-to-Income load
                     """)
     else:
         st.info("👈 Enter applicant details in the sidebar to generate a live risk assessment.")
@@ -373,7 +442,7 @@ with tab_impact:
         **1. The "Vanilla" Baseline (Red Bar):**
         Standard models optimize for *Accuracy*. On a dataset with 94% good loans, a standard model achieves 94% accuracy by simply predicting "No Default" for everyone.
         * **Result:** It captures **0%** of actual defaults.
-        * **Financial Consequence:** The bank absorbs **$35.3 Million** in losses.
+        * **Financial Consequence:** The bank absorbs **$35.3 Million** in losses per batch.
         
         **2. The AuraFin Solution (Green Bar):**
         We optimized for **Net Profit**. By implementing Cost-Sensitive Learning (15x penalty) and Threshold Optimization (0.59), we catch 71% of defaults while preserving safe customers.
@@ -391,8 +460,7 @@ with tab_impact:
 # TAB 3: METHODOLOGY
 # =========================================================
 with tab_research:
-    st.markdown("## Engineering Methodology")
-    st.markdown("A deep dive into the end-to-end data science lifecycle.")
+    st.header("Research & Methodology")
     
     # 1. PROBLEM
     st.markdown("### 1. Problem Statement")
@@ -401,7 +469,7 @@ with tab_research:
     st.markdown("---")
     
     # 2. FORENSICS
-    st.markdown("### 2. Data Forensics & Cleaning")
+    st.markdown("### 2. Data Forensics")
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Leakage Detection:** We identified that `rate_of_interest` was missing for 99% of rejected loans. This confirms it is a post-approval variable. We removed it to prevent Data Leakage.")
@@ -412,7 +480,7 @@ with tab_research:
     st.markdown("---")
     
     # 3. ENGINEERING
-    st.markdown("### 3. Strategic Feature Engineering")
+    st.markdown("### 3. Feature Engineering")
     c3, c4 = st.columns(2)
     with c3:
         st.markdown("**'Skin in the Game' Theory:** We validated that Loan-to-Value (LTV) is the strongest predictor of default. High LTV (>80%) correlates with strategic default.")
