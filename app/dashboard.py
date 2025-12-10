@@ -12,7 +12,7 @@ import numpy as np
 # 1. PAGE CONFIGURATION
 st.set_page_config(
     page_title="AuraFin | AI Risk Engine",
-    page_icon="🏦",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -137,132 +137,143 @@ def make_prediction(input_data):
 # 5. CSS STYLING
 # ---------------------------------------------------------
 st.markdown("""
-      <style>
-   /* Global Settings */
-   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-  
-   html, body, [class*="css"] {
-       font-family: 'Inter', sans-serif;
-       color: #1E293B;
-       background-color: #F8FAFC; /* Slate 50 */
-   }
-  
-   /* Card Styling */
-   div.stExpander, div.css-1r6slb0 {
-       background-color: #FFFFFF;
-       border: 1px solid #E2E8F0;
-       border-radius: 12px;
-       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-       padding: 20px;
-   }
-  
-   /* Metrics Styling */
-   div[data-testid="metric-container"] {
-       background-color: #FFFFFF;
-       border: 2px solid #E2E8F0;
-       padding: 20px;
-       border-radius: 10px;
-       text-align: center;
-       box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-   }
-   label[data-testid="stMetricLabel"] {
-       color: #64748B;
-       font-size: 13px;
-       font-weight: 600;
-       text-transform: uppercase;
-   }
-   div[data-testid="stMetricValue"] {
-       color: #0F172A;
-       font-size: 28px;
-       font-weight: 700;
-   }
-  
-   /* Custom Badge Styling */
-   .verdict-box {
-       padding: 24px;
-       border-radius: 12px;
-       text-align: center;
-       margin-bottom: 20px;
-       border: 1px solid;
-       height: 200px; /* Fixed height for alignment */
-       display: flex;
-       flex-direction: column;
-       justify-content: center;
-   }
-   .verdict-approve {
-       background-color: #ECFDF5; /* Emerald 50 */
-       border-color: #10B981;
-       color: #047857;
-   }
-   .verdict-reject {
-       background-color: #FEF2F2; /* Rose 50 */
-       border-color: #F43F5E;
-       color: #BE123C;
-   }
-   .verdict-title {
-       font-size: 14px;
-       font-weight: 600;
-       text-transform: uppercase;
-       letter-spacing: 1px;
-       margin-bottom: 8px;
-       opacity: 0.8;
-   }
-   .verdict-value {
-       font-size: 36px;
-       font-weight: 800;
-       margin: 0;
-   }
-  
-   /* Metric Box Styling (Similar to Verdict) */
-   .metric-box {
-       padding: 16px;
-       border-radius: 12px;
-       text-align: center;
-       border: 1px solid #E2E8F0;
-       background-color: #FFFFFF;
-       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-   }
-   .metric-title {
-       font-size: 12px;
-       font-weight: 600;
-       text-transform: uppercase;
-       letter-spacing: 1px;
-       margin-bottom: 4px;
-       color: #64748B;
-   }
-   .metric-value {
-       font-size: 24px;
-       font-weight: 700;
-       color: #0F172A;
-   }
-  
-   /* Tab Styling */
-   .stTabs [data-baseweb="tab-list"] {
-       gap: 24px;
-       border-bottom: 2px solid #E2E8F0;
-   }
-   .stTabs [data-baseweb="tab"] {
-       font-size: 14px;
-       font-weight: 600;
-       color: #64748B;
-       padding-bottom: 12px;
-   }
-   .stTabs [aria-selected="true"] {
-       color: #2563EB;
-       border-bottom-color: #2563EB;
-   }
-  
-   /* Gauge Card */
-   .gauge-card {
-       border: 1px solid #E2E8F0;
-       border-radius: 12px;
-       background-color: #FFFFFF;
-       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-       padding: 10px;
-       height: 200px; /* Fixed height for alignment */
-   }
-   </style>
-
+   <style>
+    /* Global Settings */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        color: #1E293B;
+        background-color: #F8FAFC; /* Slate 50 */
+    }
+    
+    /* Card Styling */
+    div.stExpander, div.css-1r6slb0 {
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 20px;
+    }
+    
+    /* FIX: Force Text Color Inside Expanders */
+    .streamlit-expanderContent p, 
+    .streamlit-expanderContent li, 
+    .streamlit-expanderContent span,
+    .streamlit-expanderContent div {
+        color: #0F172A !important; /* Force Dark Slate */
+        font-size: 15px !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Metrics Styling */
+    div[data-testid="metric-container"] {
+        background-color: #FFFFFF;
+        border: 2px solid #E2E8F0;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    label[data-testid="stMetricLabel"] {
+        color: #64748B !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+    }
+    div[data-testid="stMetricValue"] {
+        color: #0F172A !important;
+        font-size: 28px !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Custom Badge Styling */
+    .verdict-box {
+        padding: 24px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 20px;
+        border: 1px solid;
+        height: 200px; /* Fixed height for alignment */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .verdict-approve {
+        background-color: #ECFDF5; /* Emerald 50 */
+        border-color: #10B981;
+        color: #047857;
+    }
+    .verdict-reject {
+        background-color: #FEF2F2; /* Rose 50 */
+        border-color: #F43F5E;
+        color: #BE123C;
+    }
+    .verdict-title {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        opacity: 0.8;
+        color: inherit; /* Take color from parent class */
+    }
+    .verdict-value {
+        font-size: 36px;
+        font-weight: 800;
+        margin: 0;
+        color: inherit; /* Take color from parent class */
+    }
+    
+    /* Metric Box Styling (Similar to Verdict) */
+    .metric-box {
+        padding: 16px;
+        border-radius: 12px;
+        text-align: center;
+        border: 1px solid #E2E8F0;
+        background-color: #FFFFFF;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .metric-title {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+        color: #64748B;
+    }
+    .metric-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #0F172A;
+    }
+    
+    /* Tab Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        border-bottom: 2px solid #E2E8F0;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-size: 14px;
+        font-weight: 600;
+        color: #64748B;
+        padding-bottom: 12px;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #2563EB;
+        border-bottom-color: #2563EB;
+    }
+    
+    /* Gauge Card */
+    .gauge-card {
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        background-color: #FFFFFF;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 10px;
+        height: 200px; /* Fixed height for alignment */
+    }
+    </style>
 
     """, unsafe_allow_html=True)
 
@@ -270,8 +281,7 @@ st.markdown("""
 # 6. SIDEBAR
 # ---------------------------------------------------------
 with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/bank-building.png", width=50)
-    st.markdown("### AuraFin Control")
+    
     st.caption("Production v10.0 | Guardrails Active")
     st.markdown("---")
     
@@ -301,7 +311,7 @@ with st.sidebar:
 # ---------------------------------------------------------
 c1, c2 = st.columns([3, 1])
 with c1:
-    st.title("Credit Risk Intelligence System")
+    st.title("Hybrid XGBoost/PyTorch System with Finacial Threshold Optimization")
     st.markdown("Cost-Sensitive Decision Engine • Optimized for Net Profitability")
 with c2:
     st.markdown("")
